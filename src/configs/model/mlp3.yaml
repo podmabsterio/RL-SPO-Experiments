@@ -1,0 +1,2 @@
+_target_: src.models.NormalActionsMLP
+actor_hidden_dims: [64, 64]
