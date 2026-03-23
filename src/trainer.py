@@ -4,6 +4,7 @@ from typing import Any, Callable, Dict, Optional
 import numpy as np
 import torch
 from torch import nn
+from tqdm.auto import tqdm
 
 from src.models import ActorCritic
 
@@ -45,7 +46,13 @@ class Trainer:
         self.obs, _ = self.envs.reset()
         num_updates = self.cfg.total_timesteps // (self.cfg.rollout_steps * self.num_envs)
 
-        for update_idx in range(1, num_updates + 1):
+        progress_bar = tqdm(
+            range(1, num_updates + 1),
+            desc="Training",
+            dynamic_ncols=True,
+        )
+
+        for update_idx in progress_bar:
             self.update_step = update_idx
 
             rollout_stats = self.collect_rollout()
@@ -68,8 +75,22 @@ class Trainer:
             if self.scheduler is not None:
                 self.scheduler.step()
                 log_data["lr"] = float(self.optimizer.param_groups[0]["lr"])
+            else:
+                log_data["lr"] = float(self.optimizer.param_groups[0]["lr"])
 
             self.logger.log_metrics(log_data, step=self.global_step)
+
+            progress_bar.set_postfix({
+                "step": self.global_step,
+                "ret": round(log_data.get("rollout/episodic_return_mean", 0.0), 2),
+                "plen": round(log_data.get("rollout/episodic_length_mean", 0.0), 1),
+                "ploss": round(log_data["train/policy_loss"], 4),
+                "vloss": round(log_data["train/value_loss"], 4),
+                "ent": round(log_data["train/entropy"], 4),
+                "ratio_dev": round(log_data["train/ratio_deviation"], 4),
+                "grad": round(log_data["train/grad_norm"], 4),
+                "lr": f'{log_data["lr"]:.2e}',
+            })
 
     @torch.no_grad()
     def collect_rollout(self):
@@ -79,7 +100,14 @@ class Trainer:
         episodic_returns = []
         episodic_lengths = []
 
-        for _ in range(self.cfg.rollout_steps):
+        rollout_iter = tqdm(
+            range(self.cfg.rollout_steps),
+            desc=f"Rollout {self.update_step}",
+            leave=False,
+            dynamic_ncols=True,
+        )
+
+        for _ in rollout_iter:
             obs_tensor = self._to_tensor(self.obs)
 
             act_out = self.model.act(obs_tensor)
@@ -114,16 +142,18 @@ class Trainer:
                         "episode/return": float(self._episode_returns[env_i]),
                         "episode/length": int(self._episode_lengths[env_i]),
                     }
-                    
-                    self.logger.log_metrics(
-                        payload,
-                        step=self.global_step,
-                    )
+
+                    self.logger.log_metrics(payload, step=self.global_step)
 
                     self._episode_returns[env_i] = 0.0
                     self._episode_lengths[env_i] = 0
 
             self.obs = next_obs
+
+            rollout_iter.set_postfix({
+                "step": self.global_step,
+                "episodes": len(episodic_returns),
+            })
 
         last_obs_tensor = self._to_tensor(self.obs)
         last_value = self.model.get_value(last_obs_tensor)
