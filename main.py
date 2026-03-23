@@ -13,7 +13,7 @@ from src.buffer import RolloutBuffer
 
 OmegaConf.register_new_resolver("eval", eval)
 
-@hydra.main(version_base=None, config_path="src/configs", config_name="mojuco")
+@hydra.main(version_base=None, config_path="src/configs", config_name="mujoco")
 def main(config):
     set_seed(int(config.seed))
 
