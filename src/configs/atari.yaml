@@ -1,11 +1,8 @@
 defaults:
   - model: resnet
   - env: atari_env
+  - policy_loss: ppo
   - _self_
-
-policy_loss:
-  _target_: src.loss.PPOLoss
-  eps: 0.2
 
 value_loss:
   _target_: src.loss.MSEValueLoss

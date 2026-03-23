@@ -1,0 +1,2 @@
+_target_: src.loss.SPOLoss
+eps: 0.2
