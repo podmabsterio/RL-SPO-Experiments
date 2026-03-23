@@ -1,6 +1,6 @@
 torch
 torchvision
 numpy
-gymnasium
+gymnasium[mujoco]
 hydra-core
 omegaconf

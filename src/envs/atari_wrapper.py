@@ -7,7 +7,7 @@ from stable_baselines3.common.atari_wrappers import (
     NoopResetEnv
 )
 
-class AtariEnvFactory():
+class AtariEnvFactory:
     def __init__(self, num_envs, env_id):
         self.num_envs = num_envs
         self.env_id = env_id
