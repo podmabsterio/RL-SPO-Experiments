@@ -26,7 +26,7 @@ class Trainer:
         self.num_envs = num_envs
         self.model = model
         self.optimizer = optimizer
-        self.scheduler = scheduler,
+        self.scheduler = scheduler
         self.buffer = buffer
         self.logger = logger
         self.policy_loss_fn = policy_loss_fn
@@ -91,7 +91,6 @@ class Trainer:
             next_obs, rewards, terminated, truncated, infos = self.envs.step(env_actions)
 
             dones = np.logical_or(terminated, truncated)
-            print("VALUES SHAPE", value.shape)
             self.buffer.add(
                 obs=obs_tensor,
                 actions=actions,
@@ -151,6 +150,7 @@ class Trainer:
         total_losses = []
         ratio_deviations = []
         clip_fractions = []
+        grad_norms = []
 
         all_pred_values = []
         all_target_returns = []
@@ -173,6 +173,7 @@ class Trainer:
 
                 all_pred_values.append(stats["pred_values"])
                 all_target_returns.append(stats["target_returns"])
+                grad_norms.append(stats["grad_norm"])
 
         result = {
             "train/policy_loss": float(np.mean(policy_losses)),
@@ -180,6 +181,7 @@ class Trainer:
             "train/entropy": float(np.mean(entropy_values)),
             "train/total_loss": float(np.mean(total_losses)),
             "train/ratio_deviation": float(np.mean(ratio_deviations)),
+            "train/grad_norm": float(np.mean(grad_norms)),
         }
 
         if len(clip_fractions) > 0:
@@ -226,6 +228,8 @@ class Trainer:
         total_loss.backward()
         torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.cfg.max_grad_norm)
         self.optimizer.step()
+        
+        grad_norm = self._get_grad_norm()
 
         stats = {
             "policy_loss": float(p_loss.detach().cpu().item()),
@@ -234,7 +238,8 @@ class Trainer:
             "total_loss": float(total_loss.detach().cpu().item()),
             "pred_values": values.detach().cpu().numpy(),
             "target_returns": returns.detach().cpu().numpy(),
-            "ratio_deviation": float(ratio_deviation.detach().cpu().item())
+            "ratio_deviation": float(ratio_deviation.detach().cpu().item()),
+            "grad_norm": float(grad_norm)
         }
 
         return stats
@@ -247,6 +252,17 @@ class Trainer:
 
     def _actions_to_env(self, actions: torch.Tensor):
         return actions.detach().cpu().numpy()
+    
+    def _get_grad_norm(self):
+        total_norm = torch.norm(
+            torch.stack([
+                p.grad.norm(2)
+                for p in self.model.parameters()
+                if p.grad is not None
+            ]),
+            2
+        )
+        return total_norm.item()
 
     @staticmethod
     def _normalize_advantages(advantages: torch.Tensor, eps: float = 1e-8):

@@ -42,10 +42,6 @@ class NormalActionsMLP(nn.Module):
         
     def actor(self, obs):
         obs = self._flatten_obs(obs)
-        
-        print("obs finite:", torch.isfinite(obs).all().item())
-        print("obs nan:", torch.isnan(obs).any().item())
-        print("obs inf:", torch.isinf(obs).any().item())
 
         mean = self.actor_mean(obs)
         std = torch.exp(self.actor_log_std).expand_as(mean)

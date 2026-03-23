@@ -1,5 +1,7 @@
 import torch
 
+from pathlib import Path
+
 import hydra
 from hydra.utils import instantiate
 from omegaconf import DictConfig, OmegaConf
@@ -58,7 +60,7 @@ def main(config):
 
     trainer.train()
 
-    final_model_path = config.output_dir / f"{run_name}.pt"
+    final_model_path = Path(config.output_dir) / f"{run_name}.pt"
     torch.save(
         {
             "model_state_dict": model.state_dict(),
