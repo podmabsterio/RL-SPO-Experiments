@@ -119,6 +119,7 @@ class Trainer:
             next_obs, rewards, terminated, truncated, infos = self.envs.step(env_actions)
 
             dones = np.logical_or(terminated, truncated)
+
             self.buffer.add(
                 obs=obs_tensor,
                 actions=actions,
@@ -129,26 +130,26 @@ class Trainer:
             )
 
             self.global_step += self.num_envs
-
-            self._episode_returns += rewards
-            self._episode_lengths += 1
-
-            for env_i, done in enumerate(dones):
-                if done:
-                    episodic_returns.append(float(self._episode_returns[env_i]))
-                    episodic_lengths.append(int(self._episode_lengths[env_i]))
-
-                    payload = {
-                        "episode/return": float(self._episode_returns[env_i]),
-                        "episode/length": int(self._episode_lengths[env_i]),
-                    }
-
-                    self.logger.log_metrics(payload, step=self.global_step)
-
-                    self._episode_returns[env_i] = 0.0
-                    self._episode_lengths[env_i] = 0
-
             self.obs = next_obs
+
+            # Для Atari-логов: берем настоящие episodic метрики из RecordEpisodeStatistics
+            final_info_list = infos.get("final_info", None)
+            if final_info_list is not None:
+                for info in final_info_list:
+                    if info is not None and "episode" in info:
+                        ep_return = float(info["episode"]["r"])
+                        ep_length = int(info["episode"]["l"])
+
+                        episodic_returns.append(ep_return)
+                        episodic_lengths.append(ep_length)
+
+                        self.logger.log_metrics(
+                            {
+                                "episode/return": ep_return,
+                                "episode/length": ep_length,
+                            },
+                            step=self.global_step,
+                        )
 
             rollout_iter.set_postfix({
                 "step": self.global_step,
