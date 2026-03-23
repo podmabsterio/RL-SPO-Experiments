@@ -1,0 +1,5 @@
+_target_: src.envs.AtariEnvFactory
+num_envs: 8
+env_id: "ALE/Assault-v5"
+gamma: 0.99
+rollout_steps: 128
