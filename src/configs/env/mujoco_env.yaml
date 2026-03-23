@@ -1,4 +1,4 @@
 _target_: src.envs.MujocoEnvFactory
-num_envs: 10
+num_envs: 8
 env_id: 'Humanoid-v4' 
-gamma: 10
+gamma: 0.99

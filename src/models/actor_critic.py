@@ -16,7 +16,7 @@ class ActorCritic(nn.Module):
         return {
             "actions": actions,
             "log_prob": log_prob,
-            "value": value,
+            "value": value.squeeze(),
         }
 
     def evaluate_actions(self, obs, actions):
@@ -28,8 +28,8 @@ class ActorCritic(nn.Module):
         return {
             "log_prob": log_prob,
             "entropy": entropy,
-            "value": value,
+            "value": value.squeeze(),
         }
 
     def get_value(self, obs):
-        return self.model.critic(obs)
+        return self.model.critic(obs).squeeze()

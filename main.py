@@ -4,12 +4,12 @@ import hydra
 from hydra.utils import instantiate
 from omegaconf import DictConfig, OmegaConf
 
-from buffer import RolloutBuffer
-from trainer import Trainer
-
 from src.utils import build_experiment, set_seed
 from src.models import ActorCritic
+from src.trainer import Trainer
+from src.buffer import RolloutBuffer
 
+OmegaConf.register_new_resolver("eval", eval)
 
 @hydra.main(version_base=None, config_path="src/configs", config_name="mujoco")
 def main(config):
@@ -43,10 +43,8 @@ def main(config):
         device=str(config.device),
     )
 
-    experiment = build_experiment(config)
-
     trainer = Trainer(
-        config=config.trainer,
+        cfg=config.trainer,
         envs=envs,
         num_envs=envs_factory.num_envs,
         model=model,

@@ -15,6 +15,7 @@ class Trainer:
         num_envs,
         model: ActorCritic,
         optimizer: torch.optim.Optimizer,
+        scheduler,
         buffer: Any,
         logger: Any,
         policy_loss_fn: Callable[..., Dict[str, torch.Tensor]],
@@ -25,12 +26,13 @@ class Trainer:
         self.num_envs = num_envs
         self.model = model
         self.optimizer = optimizer
+        self.scheduler = scheduler,
         self.buffer = buffer
         self.logger = logger
         self.policy_loss_fn = policy_loss_fn
         self.value_loss_fn = value_loss_fn
 
-        self.device = torch.device(cfg.device)
+        self.device = next(model.parameters()).device
 
         self.global_step = 0
         self.update_step = 0
@@ -89,7 +91,7 @@ class Trainer:
             next_obs, rewards, terminated, truncated, infos = self.envs.step(env_actions)
 
             dones = np.logical_or(terminated, truncated)
-
+            print("VALUES SHAPE", value.shape)
             self.buffer.add(
                 obs=obs_tensor,
                 actions=actions,
@@ -147,7 +149,7 @@ class Trainer:
         value_losses = []
         entropy_values = []
         total_losses = []
-        approx_kls = []
+        ratio_deviations = []
         clip_fractions = []
 
         all_pred_values = []
@@ -164,7 +166,7 @@ class Trainer:
                 value_losses.append(stats["value_loss"])
                 entropy_values.append(stats["entropy"])
                 total_losses.append(stats["total_loss"])
-                approx_kls.append(stats["approx_kl"])
+                ratio_deviations.append(stats["ratio_deviation"])
 
                 if "clip_fraction" in stats:
                     clip_fractions.append(stats["clip_fraction"])
@@ -177,6 +179,7 @@ class Trainer:
             "train/value_loss": float(np.mean(value_losses)),
             "train/entropy": float(np.mean(entropy_values)),
             "train/total_loss": float(np.mean(total_losses)),
+            "train/ratio_deviation": float(np.mean(ratio_deviations)),
         }
 
         if len(clip_fractions) > 0:
