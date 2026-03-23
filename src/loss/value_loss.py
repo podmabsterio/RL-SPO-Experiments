@@ -2,7 +2,7 @@ import torch
 
 
 class MSEValueLoss:
-    def __init__(self, clip_value_loss: bool = False, epsilon: float = 0.2):
+    def __init__(self, clip_value_loss: bool = True, epsilon: float = 0.2):
         self.clip_value_loss = clip_value_loss
         self.epsilon = epsilon
 
