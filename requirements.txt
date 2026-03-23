@@ -1,0 +1,7 @@
+ale-py
+torch
+torchvision
+numpy
+gymnasium[mujoco]
+hydra-core
+omegaconf

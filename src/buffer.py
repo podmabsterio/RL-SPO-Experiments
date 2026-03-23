@@ -39,13 +39,12 @@ class RolloutBuffer:
         self._allocate_storage()
         self.reset()
 
-    def _allocate_storage(self) -> None:
+    def _allocate_storage(self):
         """
         Создает все тензоры для хранения rollout.
         """
         self.obs = torch.zeros(
             (self.num_steps, self.num_envs, *self.obs_shape),
-            dtype=torch.float32,
             device=self.device,
         )
 
@@ -64,37 +63,31 @@ class RolloutBuffer:
 
         self.rewards = torch.zeros(
             (self.num_steps, self.num_envs),
-            dtype=torch.float32,
             device=self.device,
         )
         self.dones = torch.zeros(
             (self.num_steps, self.num_envs),
-            dtype=torch.float32,
             device=self.device,
         )
         self.values = torch.zeros(
             (self.num_steps, self.num_envs),
-            dtype=torch.float32,
             device=self.device,
         )
         self.log_probs = torch.zeros(
             (self.num_steps, self.num_envs),
-            dtype=torch.float32,
             device=self.device,
         )
 
         self.advantages = torch.zeros(
             (self.num_steps, self.num_envs),
-            dtype=torch.float32,
             device=self.device,
         )
         self.returns = torch.zeros(
             (self.num_steps, self.num_envs),
-            dtype=torch.float32,
             device=self.device,
         )
 
-    def reset(self) -> None:
+    def reset(self):
         """
         Сбрасывает указатель записи перед новым rollout.
         """
@@ -102,7 +95,6 @@ class RolloutBuffer:
         self.full = False
         self._last_dones = torch.zeros(
             self.num_envs,
-            dtype=torch.float32,
             device=self.device,
         )
 
@@ -114,7 +106,7 @@ class RolloutBuffer:
         dones: torch.Tensor,
         values: torch.Tensor,
         log_probs: torch.Tensor,
-    ) -> None:
+    ):
         """
         Добавляет один timestep rollout.
 
@@ -159,7 +151,7 @@ class RolloutBuffer:
         if not self.full:
             raise RuntimeError("Cannot compute advantages before buffer is full.")
 
-        last_gae = torch.zeros(self.num_envs, dtype=torch.float32, device=self.device)
+        last_gae = torch.zeros(self.num_envs, device=self.device)
 
         for step in reversed(range(self.num_steps)):
             if step == self.num_steps - 1:

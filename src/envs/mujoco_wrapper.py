@@ -1,7 +1,7 @@
 import gymnasium as gym
 import numpy as np
 
-class MujocoEnvFactory():
+class MujocoEnvFactory:
     def __init__(self, num_envs, env_id, gamma):
         self.num_envs = num_envs
         self.env_id = env_id

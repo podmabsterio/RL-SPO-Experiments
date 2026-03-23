@@ -1,36 +1,41 @@
 defaults:
-  - model: mlp3
-  - env: mujoco_env
+  - model: resnet
+  - env: atari_env
   - _self_
 
 policy_loss:
   _target_: src.loss.PPOLoss
   eps: 0.2
+
 value_loss:
   _target_: src.loss.MSEValueLoss
+  clip_value_loss: true
+  epsilon: 0.2
 
 seed: 42
 output_dir: saved
 device: "cpu"
 project_name: "rl_experiments"
-run_name: "test_longer"
+run_name: "test_atari"
+
 trainer:
-  num_epochs: 10
+  num_epochs: 4
   num_minibatches: 4
-  rollout_steps: 256
-  total_timesteps: 100000
+  rollout_steps: 128
+  total_timesteps: 500000 # 10000000
   gamma: 0.99
   gae_lambda: 0.95
   normalize_advantages: true
   value_coef: 0.5
-  entropy_coef: 0.0
+  entropy_coef: 0.01
   max_grad_norm: 0.5
 
 num_updates: ${eval:'${trainer.total_timesteps} // int(${env.num_envs} * ${trainer.rollout_steps})'}
 
 optimizer:
   _target_: torch.optim.Adam
-  lr: 3e-4
+  lr: 2.5e-4
+
 lr_scheduler:
   _target_: torch.optim.lr_scheduler.LinearLR
   start_factor: 1.0

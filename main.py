@@ -4,7 +4,7 @@ from pathlib import Path
 
 import hydra
 from hydra.utils import instantiate
-from omegaconf import DictConfig, OmegaConf
+from omegaconf import OmegaConf
 
 from src.utils import build_experiment, set_seed
 from src.models import ActorCritic

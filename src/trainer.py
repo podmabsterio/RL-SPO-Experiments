@@ -4,6 +4,7 @@ from typing import Any, Callable, Dict, Optional
 import numpy as np
 import torch
 from torch import nn
+from tqdm.auto import tqdm
 
 from src.models import ActorCritic
 
@@ -45,7 +46,13 @@ class Trainer:
         self.obs, _ = self.envs.reset()
         num_updates = self.cfg.total_timesteps // (self.cfg.rollout_steps * self.num_envs)
 
-        for update_idx in range(1, num_updates + 1):
+        progress_bar = tqdm(
+            range(1, num_updates + 1),
+            desc="Training",
+            dynamic_ncols=True,
+        )
+
+        for update_idx in progress_bar:
             self.update_step = update_idx
 
             rollout_stats = self.collect_rollout()
@@ -67,9 +74,82 @@ class Trainer:
 
             if self.scheduler is not None:
                 self.scheduler.step()
-                log_data["lr"] = float(self.optimizer.param_groups[0]["lr"])
+            log_data["lr"] = float(self.optimizer.param_groups[0]["lr"])
 
             self.logger.log_metrics(log_data, step=self.global_step)
+
+            progress_bar.set_postfix({
+                "step": self.global_step,
+                "ret": round(log_data.get("rollout/episodic_return_mean", 0.0), 2),
+                "plen": round(log_data.get("rollout/episodic_length_mean", 0.0), 1),
+                "ploss": round(log_data["train/policy_loss"], 4),
+                "vloss": round(log_data["train/value_loss"], 4),
+                "ent": round(log_data["train/entropy"], 4),
+                "ratio_dev": round(log_data["train/ratio_deviation"], 4),
+                "grad": round(log_data["train/grad_norm"], 4),
+                "lr": f'{log_data["lr"]:.2e}',
+            })
+
+    def _log_episode_metrics(self, episode_return: float, episode_length: int):
+        payload = {
+            "episode/return": float(episode_return),
+            "episode/length": int(episode_length),
+        }
+        self.logger.log_metrics(payload, step=self.global_step)
+
+
+    def _collect_episodes_from_final_info(self, infos, episodic_returns, episodic_lengths):
+        finished_envs = set()
+
+        if "final_info" not in infos:
+            return finished_envs
+
+        for env_i, info in enumerate(infos["final_info"]):
+            if info is None or "episode" not in info:
+                continue
+
+            ep_return = info["episode"]["r"]
+            ep_length = info["episode"]["l"]
+
+            if isinstance(ep_return, np.ndarray):
+                ep_return = float(ep_return[0])
+            else:
+                ep_return = float(ep_return)
+
+            if isinstance(ep_length, np.ndarray):
+                ep_length = int(ep_length[0])
+            else:
+                ep_length = int(ep_length)
+
+            episodic_returns.append(ep_return)
+            episodic_lengths.append(ep_length)
+            self._log_episode_metrics(ep_return, ep_length)
+
+            self._episode_returns[env_i] = 0.0
+            self._episode_lengths[env_i] = 0
+            finished_envs.add(env_i)
+
+        return finished_envs
+
+
+    def _collect_episodes_from_dones(self, dones, episodic_returns, episodic_lengths, skip_envs=None):
+        if skip_envs is None:
+            skip_envs = set()
+
+        for env_i, done in enumerate(dones):
+            if not done or env_i in skip_envs:
+                continue
+
+            ep_return = float(self._episode_returns[env_i])
+            ep_length = int(self._episode_lengths[env_i])
+
+            episodic_returns.append(ep_return)
+            episodic_lengths.append(ep_length)
+            self._log_episode_metrics(ep_return, ep_length)
+
+            self._episode_returns[env_i] = 0.0
+            self._episode_lengths[env_i] = 0
+
 
     @torch.no_grad()
     def collect_rollout(self):
@@ -91,6 +171,7 @@ class Trainer:
             next_obs, rewards, terminated, truncated, infos = self.envs.step(env_actions)
 
             dones = np.logical_or(terminated, truncated)
+
             self.buffer.add(
                 obs=obs_tensor,
                 actions=actions,
@@ -105,23 +186,17 @@ class Trainer:
             self._episode_returns += rewards
             self._episode_lengths += 1
 
-            for env_i, done in enumerate(dones):
-                if done:
-                    episodic_returns.append(float(self._episode_returns[env_i]))
-                    episodic_lengths.append(int(self._episode_lengths[env_i]))
-
-                    payload = {
-                        "episode/return": float(self._episode_returns[env_i]),
-                        "episode/length": int(self._episode_lengths[env_i]),
-                    }
-                    
-                    self.logger.log_metrics(
-                        payload,
-                        step=self.global_step,
-                    )
-
-                    self._episode_returns[env_i] = 0.0
-                    self._episode_lengths[env_i] = 0
+            finished_envs = self._collect_episodes_from_final_info(
+                infos,
+                episodic_returns,
+                episodic_lengths,
+            )
+            self._collect_episodes_from_dones(
+                dones,
+                episodic_returns,
+                episodic_lengths,
+                skip_envs=finished_envs,
+            )
 
             self.obs = next_obs
 
@@ -193,6 +268,7 @@ class Trainer:
         obs = batch["obs"].to(self.device)
         actions = batch["actions"].to(self.device)
         old_log_prob = batch["old_log_prob"].to(self.device)
+        old_values = batch["old_value"].to(self.device)
         advantages = batch["advantages"].to(self.device)
         returns = batch["returns"].to(self.device)
 
@@ -215,7 +291,7 @@ class Trainer:
         )
 
 
-        v_loss = self.value_loss_fn(values, returns)
+        v_loss = self.value_loss_fn(values, returns, old_values)
         entropy_mean = entropy.mean()
 
         total_loss = (
