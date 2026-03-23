@@ -1,0 +1,3 @@
+_target_: src.envs.atari_wrapper.AtariEnvFactory
+num_envs: 8
+env_id: "ALE/Assault-v5"

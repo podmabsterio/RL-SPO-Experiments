@@ -1,3 +1,4 @@
+ale-py
 torch
 torchvision
 numpy

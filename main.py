@@ -4,7 +4,7 @@ from pathlib import Path
 
 import hydra
 from hydra.utils import instantiate
-from omegaconf import DictConfig, OmegaConf
+from omegaconf import OmegaConf
 
 from src.utils import build_experiment, set_seed
 from src.models import ActorCritic
@@ -13,7 +13,7 @@ from src.buffer import RolloutBuffer
 
 OmegaConf.register_new_resolver("eval", eval)
 
-@hydra.main(version_base=None, config_path="src/configs", config_name="mujoco")
+@hydra.main(version_base=None, config_path="src/configs", config_name="mojuco")
 def main(config):
     set_seed(int(config.seed))
 
