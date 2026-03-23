@@ -5,3 +5,4 @@ torchvision
 numpy
 hydra-core
 omegaconf
+comet_ml
