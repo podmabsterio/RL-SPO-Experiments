@@ -151,7 +151,7 @@ class RolloutBuffer:
         if not self.full:
             raise RuntimeError("Cannot compute advantages before buffer is full.")
 
-        last_gae = torch.zeros(self.num_envs, ice=self.device)
+        last_gae = torch.zeros(self.num_envs, device=self.device)
 
         for step in reversed(range(self.num_steps)):
             if step == self.num_steps - 1:

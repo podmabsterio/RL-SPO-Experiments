@@ -18,7 +18,7 @@ trainer:
   num_epochs: 10
   num_minibatches: 4
   rollout_steps: 256
-  total_timesteps: 10000000
+  total_timesteps: 100000
   gamma: 0.99
   gae_lambda: 0.95
   normalize_advantages: true
