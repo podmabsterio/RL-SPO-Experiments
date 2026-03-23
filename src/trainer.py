@@ -223,6 +223,7 @@ class Trainer:
         obs = batch["obs"].to(self.device)
         actions = batch["actions"].to(self.device)
         old_log_prob = batch["old_log_prob"].to(self.device)
+        old_values = batch["old_value"].to(self.device)
         advantages = batch["advantages"].to(self.device)
         returns = batch["returns"].to(self.device)
 
@@ -245,7 +246,7 @@ class Trainer:
         )
 
 
-        v_loss = self.value_loss_fn(values, returns)
+        v_loss = self.value_loss_fn(values, returns, old_values)
         entropy_mean = entropy.mean()
 
         total_loss = (
