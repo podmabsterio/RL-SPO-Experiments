@@ -1,9 +1,9 @@
-gymnasium[mujoco]==0.29.1
-numpy<2
-stable_baselines3==2.3.2
 tqdm==4.66.6
 torch
 torchvision
+numpy==2.4.2
+gymnasium==1.2.3
+stable_baselines3==2.7.1
 hydra-core
 omegaconf
 comet_ml
