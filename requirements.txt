@@ -8,12 +8,3 @@ torchvision
 hydra-core
 omegaconf
 comet_ml
-
-gymnasium[mujoco]==1.1.1
-ale-py==0.11.2
-torch
-torchvision
-numpy
-hydra-core
-omegaconf
-comet_ml
