@@ -1,6 +1,7 @@
 from comet_ml import Experiment
 from omegaconf import OmegaConf
 
+
 def build_experiment(cfg, env_id) -> Experiment:
     experiment = Experiment(
         project_name=cfg.project_name,

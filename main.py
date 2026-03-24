@@ -13,6 +13,7 @@ from src.buffer import RolloutBuffer
 
 OmegaConf.register_new_resolver("eval", eval)
 
+
 @hydra.main(version_base=None, config_path="src/configs", config_name="mujoco")
 def main(config):
     set_seed(int(config.seed))
@@ -24,7 +25,7 @@ def main(config):
     envs_factory = instantiate(config.env)
     envs = envs_factory.make_envs()
     env_id = envs_factory.env_id
-    
+
     experiment, run_name = build_experiment(config, env_id)
 
     backbone_model = instantiate(config.model, envs=envs)
@@ -32,10 +33,9 @@ def main(config):
     trainable_params = filter(lambda p: p.requires_grad, model.parameters())
     optimizer = instantiate(config.optimizer, params=trainable_params)
     lr_scheduler = instantiate(config.lr_scheduler, optimizer=optimizer)
-    
+
     policy_loss = instantiate(config.policy_loss)
     value_loss = instantiate(config.value_loss)
-    
 
     buffer = RolloutBuffer(
         num_steps=int(config.trainer.rollout_steps),

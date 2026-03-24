@@ -2,7 +2,7 @@ import torch
 
 
 class MSEValueLoss:
-    def __init__(self, clip_value_loss: bool = True, epsilon: float = 0.2):
+    def __init__(self, clip_value_loss=True, epsilon=0.2):
         self.clip_value_loss = clip_value_loss
         self.epsilon = epsilon
 
@@ -25,6 +25,8 @@ class MSEValueLoss:
             self.epsilon,
         )
         value_loss_clipped = (value_clipped - returns) ** 2
-        value_loss = 0.5 * torch.mean(torch.max(value_loss_unclipped, value_loss_clipped))
+        value_loss = 0.5 * torch.mean(
+            torch.max(value_loss_unclipped, value_loss_clipped)
+        )
 
         return value_loss

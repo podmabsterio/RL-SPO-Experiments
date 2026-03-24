@@ -8,19 +8,20 @@ from tqdm.auto import tqdm
 
 from src.models import ActorCritic
 
+
 class Trainer:
     def __init__(
         self,
         cfg,
-        envs: Any,
+        envs,
         num_envs,
         model: ActorCritic,
-        optimizer: torch.optim.Optimizer,
+        optimizer,
         scheduler,
-        buffer: Any,
-        logger: Any,
-        policy_loss_fn: Callable[..., Dict[str, torch.Tensor]],
-        value_loss_fn: Callable[[torch.Tensor, torch.Tensor], torch.Tensor],
+        buffer,
+        logger,
+        policy_loss_fn,
+        value_loss_fn,
     ):
         self.cfg = cfg
         self.envs = envs
@@ -44,7 +45,9 @@ class Trainer:
 
     def train(self):
         self.obs, _ = self.envs.reset()
-        num_updates = self.cfg.total_timesteps // (self.cfg.rollout_steps * self.num_envs)
+        num_updates = self.cfg.total_timesteps // (
+            self.cfg.rollout_steps * self.num_envs
+        )
 
         progress_bar = tqdm(
             range(1, num_updates + 1),
@@ -78,27 +81,30 @@ class Trainer:
 
             self.logger.log_metrics(log_data, step=self.global_step)
 
-            progress_bar.set_postfix({
-                "step": self.global_step,
-                "ret": round(log_data.get("rollout/episodic_return_mean", 0.0), 2),
-                "plen": round(log_data.get("rollout/episodic_length_mean", 0.0), 1),
-                "ploss": round(log_data["train/policy_loss"], 4),
-                "vloss": round(log_data["train/value_loss"], 4),
-                "ent": round(log_data["train/entropy"], 4),
-                "ratio_dev": round(log_data["train/ratio_deviation"], 4),
-                "grad": round(log_data["train/grad_norm"], 4),
-                "lr": f'{log_data["lr"]:.2e}',
-            })
+            progress_bar.set_postfix(
+                {
+                    "step": self.global_step,
+                    "ret": round(log_data.get("rollout/episodic_return_mean", 0.0), 2),
+                    "plen": round(log_data.get("rollout/episodic_length_mean", 0.0), 1),
+                    "ploss": round(log_data["train/policy_loss"], 4),
+                    "vloss": round(log_data["train/value_loss"], 4),
+                    "ent": round(log_data["train/entropy"], 4),
+                    "ratio_dev": round(log_data["train/ratio_deviation"], 4),
+                    "grad": round(log_data["train/grad_norm"], 4),
+                    "lr": f'{log_data["lr"]:.2e}',
+                }
+            )
 
-    def _log_episode_metrics(self, episode_return: float, episode_length: int):
+    def _log_episode_metrics(self, episode_return, episode_length):
         payload = {
             "episode/return": float(episode_return),
             "episode/length": int(episode_length),
         }
         self.logger.log_metrics(payload, step=self.global_step)
 
-
-    def _collect_episodes_from_final_info(self, infos, episodic_returns, episodic_lengths):
+    def _collect_episodes_from_final_info(
+        self, infos, episodic_returns, episodic_lengths
+    ):
         finished_envs = set()
 
         if "final_info" not in infos:
@@ -131,8 +137,9 @@ class Trainer:
 
         return finished_envs
 
-
-    def _collect_episodes_from_dones(self, dones, episodic_returns, episodic_lengths, skip_envs=None):
+    def _collect_episodes_from_dones(
+        self, dones, episodic_returns, episodic_lengths, skip_envs=None
+    ):
         if skip_envs is None:
             skip_envs = set()
 
@@ -149,7 +156,6 @@ class Trainer:
 
             self._episode_returns[env_i] = 0.0
             self._episode_lengths[env_i] = 0
-
 
     @torch.no_grad()
     def collect_rollout(self):
@@ -168,7 +174,9 @@ class Trainer:
             value = act_out["value"]
 
             env_actions = self._actions_to_env(actions)
-            next_obs, rewards, terminated, truncated, infos = self.envs.step(env_actions)
+            next_obs, rewards, terminated, truncated, infos = self.envs.step(
+                env_actions
+            )
 
             dones = np.logical_or(terminated, truncated)
 
@@ -264,7 +272,7 @@ class Trainer:
 
         return result
 
-    def _update_minibatch(self, batch: Dict[str, torch.Tensor]):
+    def _update_minibatch(self, batch):
         obs = batch["obs"].to(self.device)
         actions = batch["actions"].to(self.device)
         old_log_prob = batch["old_log_prob"].to(self.device)
@@ -282,29 +290,26 @@ class Trainer:
 
         log_ratio = new_log_prob - old_log_prob
         ratio = torch.exp(log_ratio)
-        
+
         ratio_deviation = (torch.abs(ratio - 1)).mean()
-                
+
         p_loss = self.policy_loss_fn(
             ratio=ratio,
             advantages=advantages,
         )
 
-
         v_loss = self.value_loss_fn(values, returns, old_values)
         entropy_mean = entropy.mean()
 
         total_loss = (
-            p_loss
-            + self.cfg.value_coef * v_loss
-            - self.cfg.entropy_coef * entropy_mean
+            p_loss + self.cfg.value_coef * v_loss - self.cfg.entropy_coef * entropy_mean
         )
 
         self.optimizer.zero_grad()
         total_loss.backward()
         torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.cfg.max_grad_norm)
         self.optimizer.step()
-        
+
         grad_norm = self._get_grad_norm()
 
         stats = {
@@ -315,31 +320,29 @@ class Trainer:
             "pred_values": values.detach().cpu().numpy(),
             "target_returns": returns.detach().cpu().numpy(),
             "ratio_deviation": float(ratio_deviation.detach().cpu().item()),
-            "grad_norm": float(grad_norm)
+            "grad_norm": float(grad_norm),
         }
 
         return stats
 
-    def _to_tensor(self, x: Any, dtype: Optional[torch.dtype] = None):
+    def _to_tensor(self, x: Any, dtype=None):
         tensor = torch.as_tensor(x, device=self.device)
         if dtype is not None:
             tensor = tensor.to(dtype=dtype)
         return tensor
 
-    def _actions_to_env(self, actions: torch.Tensor):
+    def _actions_to_env(self, actions):
         return actions.detach().cpu().numpy()
-    
+
     def _get_grad_norm(self):
         total_norm = torch.norm(
-            torch.stack([
-                p.grad.norm(2)
-                for p in self.model.parameters()
-                if p.grad is not None
-            ]),
-            2
+            torch.stack(
+                [p.grad.norm(2) for p in self.model.parameters() if p.grad is not None]
+            ),
+            2,
         )
         return total_norm.item()
 
     @staticmethod
-    def _normalize_advantages(advantages: torch.Tensor, eps: float = 1e-8):
+    def _normalize_advantages(advantages, eps=1e-8):
         return (advantages - advantages.mean()) / (advantages.std() + eps)

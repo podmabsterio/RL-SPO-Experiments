@@ -1,6 +1,7 @@
 import torch
 from torch import nn
 
+
 class ActorCritic(nn.Module):
     def __init__(self, model):
         super().__init__()

@@ -5,10 +5,11 @@ from stable_baselines3.common.atari_wrappers import (
     EpisodicLifeEnv,
     FireResetEnv,
     MaxAndSkipEnv,
-    NoopResetEnv
+    NoopResetEnv,
 )
 
 gym.register_envs(ale_py)
+
 
 class AtariEnvFactory:
     def __init__(self, num_envs, env_id):
@@ -22,14 +23,17 @@ class AtariEnvFactory:
             env = NoopResetEnv(env, noop_max=30)
             env = MaxAndSkipEnv(env, skip=4)
             env = EpisodicLifeEnv(env)
-            if 'FIRE' in env.unwrapped.get_action_meanings():
+            if "FIRE" in env.unwrapped.get_action_meanings():
                 env = FireResetEnv(env)
             env = ClipRewardEnv(env)
             env = gym.wrappers.ResizeObservation(env, (84, 84))
             env = gym.wrappers.GrayscaleObservation(env)
             env = gym.wrappers.FrameStackObservation(env, 4)
             return env
+
         return thunk
-    
+
     def make_envs(self):
-        return gym.vector.AsyncVectorEnv([self._make_env() for _ in range(self.num_envs)])
+        return gym.vector.AsyncVectorEnv(
+            [self._make_env() for _ in range(self.num_envs)]
+        )

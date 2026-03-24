@@ -1,6 +1,7 @@
 import gymnasium as gym
 import numpy as np
 
+
 class MujocoEnvFactory:
     def __init__(self, num_envs, env_id, gamma):
         self.num_envs = num_envs
@@ -14,11 +15,18 @@ class MujocoEnvFactory:
             env = gym.wrappers.RecordEpisodeStatistics(env)
             env = gym.wrappers.ClipAction(env)
             env = gym.wrappers.NormalizeObservation(env)
-            env = gym.wrappers.TransformObservation(env, lambda o: np.clip(o, -10, 10), None)
+            env = gym.wrappers.TransformObservation(
+                env, lambda o: np.clip(o, -10, 10), None
+            )
             env = gym.wrappers.NormalizeReward(env, gamma=self.gamma)
-            env = gym.wrappers.TransformReward(env, lambda r: float(np.clip(r, -10, 10)))
+            env = gym.wrappers.TransformReward(
+                env, lambda r: float(np.clip(r, -10, 10))
+            )
             return env
+
         return thunk
-    
+
     def make_envs(self):
-        return gym.vector.AsyncVectorEnv([self._make_env() for _ in range(self.num_envs)])
+        return gym.vector.AsyncVectorEnv(
+            [self._make_env() for _ in range(self.num_envs)]
+        )

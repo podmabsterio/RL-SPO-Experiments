@@ -2,10 +2,10 @@ import torch
 
 
 class PPOLoss:
-    def __init__(self, eps: float):
+    def __init__(self, eps):
         self.eps = eps
 
-    def __call__(self, ratio: torch.Tensor, advantages: torch.Tensor) -> torch.Tensor:
+    def __call__(self, ratio, advantages):
         unclipped_objective = ratio * advantages
         clipped_ratio = torch.clamp(ratio, 1.0 - self.eps, 1.0 + self.eps)
         clipped_objective = clipped_ratio * advantages

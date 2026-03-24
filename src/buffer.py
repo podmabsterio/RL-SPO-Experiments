@@ -8,9 +8,9 @@ class RolloutBuffer:
         self,
         num_steps: int,
         num_envs: int,
-        observation_space: gym.Space,
-        action_space: gym.Space,
-        device: str = "cpu",
+        observation_space,
+        action_space,
+        device="cpu",
     ):
         self.num_steps = num_steps
         self.num_envs = num_envs
@@ -40,9 +40,6 @@ class RolloutBuffer:
         self.reset()
 
     def _allocate_storage(self):
-        """
-        Создает все тензоры для хранения rollout.
-        """
         self.obs = torch.zeros(
             (self.num_steps, self.num_envs, *self.obs_shape),
             device=self.device,
@@ -88,9 +85,6 @@ class RolloutBuffer:
         )
 
     def reset(self):
-        """
-        Сбрасывает указатель записи перед новым rollout.
-        """
         self.pos = 0
         self.full = False
         self._last_dones = torch.zeros(
@@ -100,24 +94,13 @@ class RolloutBuffer:
 
     def add(
         self,
-        obs: torch.Tensor,
-        actions: torch.Tensor,
-        rewards: torch.Tensor,
-        dones: torch.Tensor,
-        values: torch.Tensor,
-        log_probs: torch.Tensor,
+        obs,
+        actions,
+        rewards,
+        dones,
+        values,
+        log_probs,
     ):
-        """
-        Добавляет один timestep rollout.
-
-        Ожидаемые shapes:
-            obs:        [num_envs, *obs_shape]
-            actions:    [num_envs] или [num_envs, *action_shape]
-            rewards:    [num_envs]
-            dones:      [num_envs]
-            values:     [num_envs]
-            log_probs:  [num_envs]
-        """
         if self.pos >= self.num_steps:
             raise RuntimeError("RolloutBuffer overflow: add() called too many times.")
 
@@ -134,11 +117,7 @@ class RolloutBuffer:
         if self.pos == self.num_steps:
             self.full = True
 
-    def last_dones(self) -> torch.Tensor:
-        """
-        Возвращает done-флаги последнего перехода rollout.
-        Нужны для bootstrap в compute_advantages.
-        """
+    def last_dones(self):
         return self._last_dones
 
     def compute_advantages(
@@ -173,9 +152,6 @@ class RolloutBuffer:
         self.returns = self.advantages + self.values
 
     def get_all(self):
-        """
-        Возвращает все rollout данные в плоском виде [num_steps * num_envs, ...].
-        """
         if not self.full:
             raise RuntimeError("Cannot read from buffer before it is full.")
 
@@ -189,22 +165,7 @@ class RolloutBuffer:
         }
         return batch
 
-    def iter_minibatches(
-        self,
-        num_minibatches: int,
-        shuffle: bool = True,
-    ):
-        """
-        Итерирует по минибатчам.
-
-        Возвращает словари с ключами:
-            - obs
-            - actions
-            - old_log_prob
-            - old_value
-            - advantages
-            - returns
-        """
+    def iter_minibatches(self, num_minibatches: int, shuffle=True):
         if not self.full:
             raise RuntimeError("Cannot iterate minibatches before buffer is full.")
 
@@ -236,8 +197,5 @@ class RolloutBuffer:
                 "returns": batch["returns"][mb_idx],
             }
 
-    def _flatten_time_env(self, x: torch.Tensor) -> torch.Tensor:
-        """
-        [T, N, ...] -> [T * N, ...]
-        """
+    def _flatten_time_env(self, x):
         return x.reshape(self.num_steps * self.num_envs, *x.shape[2:])
