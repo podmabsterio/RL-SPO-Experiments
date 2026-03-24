@@ -14,7 +14,7 @@ class MujocoEnvFactory:
             env = gym.wrappers.RecordEpisodeStatistics(env)
             env = gym.wrappers.ClipAction(env)
             env = gym.wrappers.NormalizeObservation(env)
-            env = gym.wrappers.TransformObservation(env, lambda o: np.clip(o, -10, 10))
+            env = gym.wrappers.TransformObservation(env, lambda o: np.clip(o, -10, 10), None)
             env = gym.wrappers.NormalizeReward(env, gamma=self.gamma)
             env = gym.wrappers.TransformReward(env, lambda r: float(np.clip(r, -10, 10)))
             return env
