@@ -1,5 +1,5 @@
 import gymnasium as gym
-import ale_py
+
 from stable_baselines3.common.atari_wrappers import (
     ClipRewardEnv,
     EpisodicLifeEnv,
@@ -8,7 +8,6 @@ from stable_baselines3.common.atari_wrappers import (
     NoopResetEnv
 )
 
-gym.register_envs(ale_py)
 
 class AtariEnvFactory:
     def __init__(self, num_envs, env_id):
@@ -26,8 +25,8 @@ class AtariEnvFactory:
                 env = FireResetEnv(env)
             env = ClipRewardEnv(env)
             env = gym.wrappers.ResizeObservation(env, (84, 84))
-            env = gym.wrappers.GrayscaleObservation(env)
-            env = gym.wrappers.FrameStackObservation(env, 4)
+            env = gym.wrappers.GrayScaleObservation(env)
+            env = gym.wrappers.FrameStack(env, 4)
             return env
         return thunk
     
